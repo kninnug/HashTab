@@ -1,6 +1,8 @@
 CC = gcc
 OPTS = -Wall -pedantic -g -std=c99
 
+all: test
+
 GeneralHashFunctions.o: GeneralHashFunctions.c
 	$(CC) $(OPTS) -c -o GeneralHashFunctions.o GeneralHashFunctions.c
 

@@ -89,6 +89,8 @@
 
 #include "hashtab.h"
 
+#pragma GCC diagnostic ignored "-Wformat"
+
 #ifdef HAVE_UTIL_H
 #include HAVE_UTIL_H
 #else
