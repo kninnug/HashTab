@@ -1,8 +1,8 @@
 /**
  * HashTab: a simple but effective hash table implementation.
  * @author  Marco Gunnink <marco@kninnug.nl>
- * @date    2015-03-06
- * @version 2.0.2
+ * @date    2015-06-09
+ * @version 2.1.0
  * @file    hashtab.h
  * 
  * The hash table uses (singly-)linked lists to avoid collisions and incremental
@@ -56,7 +56,8 @@
  *   wise add it.
  * - find: Find an item in the table.
  * - forEach: Iterate over all the items in the table with a callback function.
- * - remove: Remove an item to the hash table.
+ * - remove: Remove an item from the hash table.
+ * - copy: Make a shallow or deep copy.
  *
  * License MIT:
  *
@@ -232,6 +233,18 @@ PUBLIC linklist_t * linklist_remove(linklist_t * ll, const void * item,
 		int (*cmp)(const void * a, const void * b), void ** ret);
 
 /**
+ * Makes a copy of the linklist. The cpy-callback is used to make copies of the
+ * items. If cpy is NULL the original pointers are copied.
+ *
+ * @param src The original linklist.
+ * @param cpy The callback to copy items with.
+ * @param ctx A context-pointer for the callback.
+ * @return A copy of the linklist.
+ */
+PUBLIC linklist_t * linklist_copy(const linklist_t * src, void * (cpy)(const
+		void * item, void * ctx), void * ctx);
+
+/**
  * Free the linklist.
  *
  * @param ll The linklist.
@@ -308,6 +321,18 @@ PUBLIC void hashtab_forEach(hashtab_t * ht,
  * @return The item.
  */
 PUBLIC void * hashtab_remove(hashtab_t * ht, const void * item);
+
+/**
+ * Returns a copy of the hash table. The cpy-callback is called for every item
+ * to make a copy of it. If cpy is NULL the item-pointers are copied shallowly.
+ *
+ * @param src The original hash table.
+ * @param cpy The callback to make copies of the items.
+ * @param ctx A context pointer for the callback.
+ * @return A copy of the hash table.
+ */
+PUBLIC hashtab_t * hashtab_copy(const hashtab_t * src, void * (cpy)(const void
+		* item, void * ctx), void * ctx);
 
 /**
  * Free the hash table.

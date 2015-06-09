@@ -2,8 +2,8 @@ HashTab: a simple but effective hash table implementation.
 ==========================================================
 
 Author: Marco Gunnink <marco@kninnug.nl>  
-Date: 2015-03-06  
-Version: 2.0.2
+Date: 2015-06-09
+Version: 2.1.0
 
 The hash table uses (singly-)linked lists to avoid collisions and incremental
 resizing to grow the table when its load factor exceeds a provided value.
@@ -58,9 +58,10 @@ The following operations are supported (see doc-comments for more info):
   wise add it.
 - `find`: Find an item in the table.
 - `forEach`: Iterate over all the items in the table with a callback function.
-- `remove`: Remove an item to the hash table.
+- `remove`: Remove an item from the hash table.
+- `copy`: Make a shallow or deep copy.
 
-License: MIT (see LICENSE.md)
+License: MIT (see LICENSE)
 
 [Example hash functions][ghc] collected by [Arash Partow][ap].
 

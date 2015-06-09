@@ -1,8 +1,8 @@
 /**
  * HashTab: a simple but effective hash table implementation.
  * @author  Marco Gunnink <marco@kninnug.nl>
- * @date    2015-03-06
- * @version 2.0.2
+ * @date    2015-06-09
+ * @version 2.1.0
  * @file    hashtab.c
  * 
  * The hash table uses (singly-)linked lists to avoid collisions and incremental
@@ -56,7 +56,8 @@
  *   wise add it.
  * - find: Find an item in the table.
  * - forEach: Iterate over all the items in the table with a callback function.
- * - remove: Remove an item to the hash table.
+ * - remove: Remove an item from the hash table.
+ * - copy: Make a shallow or deep copy.
  *
  * License MIT:
  *
@@ -198,6 +199,25 @@ PUBLIC void linklist_free(linklist_t * ll){
 		linklist_free(ll->next);
 		free(ll);
 	}
+}
+
+PUBLIC linklist_t * linklist_copy(const linklist_t * src, void * (cpy)(const
+		void * item, void * ctx), void * ctx){
+	linklist_t * ret = malloc(sizeof *ret);
+	
+	if(src->next){
+		ret->next = linklist_copy(src->next, cpy, ctx);
+	}else{
+		ret->next = NULL;
+	}
+	
+	if(cpy){
+		ret->item = cpy(src->item, ctx);
+	}else{
+		ret->item = src->item;
+	}
+	
+	return ret;
 }
 
 /*
@@ -534,6 +554,28 @@ PUBLIC void * hashtab_remove(hashtab_t * ht, const void * item){
 				++ht->shrinks;
 			}
 		}
+	}
+	
+	return ret;
+}
+
+PUBLIC hashtab_t * hashtab_copy(const hashtab_t * src, void * (cpy)(const void
+		* item, void * ctx), void * ctx){
+	hashtab_t * ret = malloc(sizeof *ret);
+	size_t i;
+	
+	memcpy(ret, src, sizeof *ret);
+	
+	ret->data = calloc(ret->size, sizeof *ret->data);
+	
+	for(i = 0; i < ret->size; i++){
+		if(src->data[i]){
+			ret->data[i] = linklist_copy(src->data[i], cpy, ctx);
+		}
+	}
+	
+	if(src->other){
+		ret->other = hashtab_copy(src->other, cpy, ctx);
 	}
 	
 	return ret;

@@ -36,6 +36,15 @@ void KVfree(void * v, void * ctx){
 	free(v);
 }
 
+void * KVcopy(const void * v, void * ctx){
+	const KVtest_t * src = v;
+	KVtest_t * ret = malloc(sizeof *ret);
+	ret->key = src->key;
+	ret->value = src->value;
+	
+	return ret;
+}
+
 int main(void){
 	size_t size = 8, moveR = 4, i;
 	int shrink = 1;
@@ -55,6 +64,7 @@ int main(void){
 	
 	hashtab_t * ht = hashtab_make(size, KVhash, KVcmp, threshold, moveR, 
 			shrink);
+	hashtab_t * ht2;
 	
 	for(i = 0; i < sizeof testStrs / sizeof *testStrs; i++){
 		tmp = malloc(sizeof *tmp);
@@ -66,9 +76,15 @@ int main(void){
 	
 	hashtab_print(ht, KVprint);
 	
+	ht2 = hashtab_copy(ht, KVcopy, NULL);
+	
+	hashtab_print(ht2, KVprint);
+	
 	hashtab_forEach(ht, KVfree, NULL);
+	hashtab_forEach(ht2, KVfree, NULL);
 	
 	hashtab_free(ht);
+	hashtab_free(ht2);
 	
 	return 0;
 }
