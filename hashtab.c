@@ -2,7 +2,7 @@
  * HashTab: a simple but effective hash table implementation.
  * @author  Marco Gunnink <marco@kninnug.nl>
  * @date    2015-06-09
- * @version 2.1.0
+ * @version 2.1.1
  * @file    hashtab.c
  * 
  * The hash table uses (singly-)linked lists to avoid collisions and incremental
@@ -46,14 +46,14 @@
  * 
  * The following operations are supported (see doc-comments for more info):
  * - make: Allocate a new hash table and fill it with the relevant information.
- * - free: De-allocate the hash table and it's allocated members. Note that this
+ * - free: De-allocate the hash table and its allocated members. Note that this
  *   does not free any items that may still be in it. To do this either remove
  *   the items individually or call forEach (see below) with an item-cleanup 
  *   function.
  * - add: Add a new item to the hash table. Note that this adds the item even if
  *   it already exists. To replace existing items use insert (see below).
- * - insert: Insert an item: if it can be found in the table replace it, other-
- *   wise add it.
+ * - insert: Insert an item: if it can be found in the table replace it,
+ *   otherwise add it.
  * - find: Find an item in the table.
  * - forEach: Iterate over all the items in the table with a callback function.
  * - remove: Remove an item from the hash table.
@@ -73,13 +73,13 @@
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
  * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+ * The software is provided "as is", without warranty of any kind, express or
+ * implied, including but not limited to the warranties of merchantability,
+ * fitness for a particular purpose and noninfringement. In no event shall the
+ * authors or copyright holders be liable for any claim, damages or other
+ * liability, whether in an action of contract, tort or otherwise, arising from,
+ * out of or in connection with the software or the use or other dealings in
+ * the software.
  */
 
 #include <stdio.h>
@@ -95,6 +95,14 @@
 #ifdef HAVE_UTIL_H
 #include HAVE_UTIL_H
 #else
+
+/* Inspired by the Minix source code. */
+#ifndef PUBLIC
+#define PUBLIC
+#endif
+#ifndef PRIVATE
+#define PRIVATE static
+#endif
 
 PRIVATE void * safeMalloc(size_t n){
 	void * p = malloc(n);

@@ -2,7 +2,7 @@
  * HashTab: a simple but effective hash table implementation.
  * @author  Marco Gunnink <marco@kninnug.nl>
  * @date    2015-06-09
- * @version 2.1.0
+ * @version 2.1.1
  * @file    hashtab.h
  * 
  * The hash table uses (singly-)linked lists to avoid collisions and incremental
@@ -46,14 +46,14 @@
  * 
  * The following operations are supported (see doc-comments for more info):
  * - make: Allocate a new hash table and fill it with the relevant information.
- * - free: De-allocate the hash table and it's allocated members. Note that this
+ * - free: De-allocate the hash table and its allocated members. Note that this
  *   does not free any items that may still be in it. To do this either remove
  *   the items individually or call forEach (see below) with an item-cleanup 
  *   function.
  * - add: Add a new item to the hash table. Note that this adds the item even if
  *   it already exists. To replace existing items use insert (see below).
- * - insert: Insert an item: if it can be found in the table replace it, other-
- *   wise add it.
+ * - insert: Insert an item: if it can be found in the table replace it,
+ *   otherwise add it.
  * - find: Find an item in the table.
  * - forEach: Iterate over all the items in the table with a callback function.
  * - remove: Remove an item from the hash table.
@@ -73,27 +73,19 @@
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
  * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
+ * The software is provided "as is", without warranty of any kind, express or
+ * implied, including but not limited to the warranties of merchantability,
+ * fitness for a particular purpose and noninfringement. In no event shall the
+ * authors or copyright holders be liable for any claim, damages or other
+ * liability, whether in an action of contract, tort or otherwise, arising from,
+ * out of or in connection with the software or the use or other dealings in
+ * the software.
  */
 
 #ifndef HASHTAB_H
 #define HASHTAB_H
 
 #include <stdlib.h>
-
-/* Inspired by the Minix source code. */
-#ifndef PUBLIC
-#define PUBLIC
-#endif
-#ifndef PRIVATE
-#define PRIVATE static
-#endif
 
 /** A simple singly-linked list. */
 typedef struct linklist{
@@ -150,7 +142,7 @@ typedef struct hashtab{
  * @param ht The hash table.
  * @return The number of items.
  */
-PUBLIC size_t hashtab_length(hashtab_t * ht);
+size_t hashtab_length(hashtab_t * ht);
 
 /**
  * The load factor of the hash table: length / size.
@@ -183,7 +175,7 @@ PUBLIC size_t hashtab_length(hashtab_t * ht);
  * @param next The next node, or NULL.
  * @return The new link.
  */
-PUBLIC linklist_t * linklist_make(void * item, linklist_t * next);
+linklist_t * linklist_make(void * item, linklist_t * next);
 
 /**
  * Add the supplied item to the linklist. If ll has no item it will be stored
@@ -194,7 +186,7 @@ PUBLIC linklist_t * linklist_make(void * item, linklist_t * next);
  * @param item The item.
  * @return Either ll (with ll->item == item) or a new link, that points to ll.
  */
-PUBLIC linklist_t * linklist_add(linklist_t * ll, void * item);
+linklist_t * linklist_add(linklist_t * ll, void * item);
 
 /**
  * Find the link that contains item.
@@ -205,7 +197,7 @@ PUBLIC linklist_t * linklist_add(linklist_t * ll, void * item);
  *        as the second. It must return 0 if they are considered equal.
  * @return The link containing item, or NULL if not found.
  */
-PUBLIC linklist_t * linklist_find(linklist_t * ll, const void * item, 
+linklist_t * linklist_find(linklist_t * ll, const void * item, 
 		int (*cmp)(const void * needle, const void * hay));
 
 /**
@@ -216,8 +208,8 @@ PUBLIC linklist_t * linklist_find(linklist_t * ll, const void * item,
  *        the second is ctx.
  * @param ctx A context also supplied to the callback.
  */
-PUBLIC void linklist_forEach(linklist_t * ll, 
-		void (*callback)(void * item, void * ctx), void * ctx);
+void linklist_forEach(linklist_t * ll, void (*callback)(void * item, void * ctx), 
+		void * ctx);
 
 /**
  * Remove the link containing item.
@@ -229,7 +221,7 @@ PUBLIC void linklist_forEach(linklist_t * ll,
  * @param [out] ret The removed item will be placed here, if not NULL.
  * @return The remaining list (possibly NULL).
  */
-PUBLIC linklist_t * linklist_remove(linklist_t * ll, const void * item, 
+linklist_t * linklist_remove(linklist_t * ll, const void * item, 
 		int (*cmp)(const void * a, const void * b), void ** ret);
 
 /**
@@ -241,7 +233,7 @@ PUBLIC linklist_t * linklist_remove(linklist_t * ll, const void * item,
  * @param ctx A context-pointer for the callback.
  * @return A copy of the linklist.
  */
-PUBLIC linklist_t * linklist_copy(const linklist_t * src, void * (cpy)(const
+linklist_t * linklist_copy(const linklist_t * src, void * (cpy)(const
 		void * item, void * ctx), void * ctx);
 
 /**
@@ -249,7 +241,7 @@ PUBLIC linklist_t * linklist_copy(const linklist_t * src, void * (cpy)(const
  *
  * @param ll The linklist.
  */
-PUBLIC void linklist_free(linklist_t * ll);
+void linklist_free(linklist_t * ll);
 
 /**
  * Allocate and initialize a new hash table.
@@ -268,7 +260,7 @@ PUBLIC void linklist_free(linklist_t * ll);
  *        1 - threshold.
  * @return A new hash table.
  */
-PUBLIC hashtab_t * hashtab_make(size_t size, 
+hashtab_t * hashtab_make(size_t size, 
 		size_t (*hasher)(const void * item),
 		int (*cmp)(const void * a, const void * b), float threshold, 
 		size_t moveR, int shrink);
@@ -281,7 +273,7 @@ PUBLIC hashtab_t * hashtab_make(size_t size,
  * @param item The item.
  * @return The new length of the table.
  */
-PUBLIC size_t hashtab_add(hashtab_t * ht, void * item);
+size_t hashtab_add(hashtab_t * ht, void * item);
 
 /**
  * Find an item in the hash table.
@@ -290,7 +282,7 @@ PUBLIC size_t hashtab_add(hashtab_t * ht, void * item);
  * @param item The item to find.
  * @return The item or NULL if it's not in the table.
  */
-PUBLIC void * hashtab_find(hashtab_t * ht, const void * item);
+void * hashtab_find(hashtab_t * ht, const void * item);
 
 /**
  * Insert an item into the hash table. If item isn't in the table yet it is
@@ -300,7 +292,7 @@ PUBLIC void * hashtab_find(hashtab_t * ht, const void * item);
  * @param item The item to add.
  * @return The old item, or NULL if the new item was added.
  */
-PUBLIC void * hashtab_insert(hashtab_t * ht, void * item);
+void * hashtab_insert(hashtab_t * ht, void * item);
 
 /**
  * Apply a function to each item in the hash table.
@@ -310,7 +302,7 @@ PUBLIC void * hashtab_insert(hashtab_t * ht, void * item);
  *        the second is ctx.
  * @param ctx A context also supplied to the callback.
  */
-PUBLIC void hashtab_forEach(hashtab_t * ht, 
+void hashtab_forEach(hashtab_t * ht, 
 		void (*callback)(void * item, void * ctx), void * ctx);
 
 /**
@@ -320,7 +312,7 @@ PUBLIC void hashtab_forEach(hashtab_t * ht,
  * @param item The item to remove.
  * @return The item.
  */
-PUBLIC void * hashtab_remove(hashtab_t * ht, const void * item);
+void * hashtab_remove(hashtab_t * ht, const void * item);
 
 /**
  * Returns a copy of the hash table. The cpy-callback is called for every item
@@ -331,7 +323,7 @@ PUBLIC void * hashtab_remove(hashtab_t * ht, const void * item);
  * @param ctx A context pointer for the callback.
  * @return A copy of the hash table.
  */
-PUBLIC hashtab_t * hashtab_copy(const hashtab_t * src, void * (cpy)(const void
+hashtab_t * hashtab_copy(const hashtab_t * src, void * (cpy)(const void
 		* item, void * ctx), void * ctx);
 
 /**
@@ -339,7 +331,7 @@ PUBLIC hashtab_t * hashtab_copy(const hashtab_t * src, void * (cpy)(const void
  *
  * @param ht The hash table.
  */
-PUBLIC void hashtab_free(hashtab_t * ht);
+void hashtab_free(hashtab_t * ht);
 
 /**
  * (Debug function, replacable by forEach)
@@ -349,7 +341,7 @@ PUBLIC void hashtab_free(hashtab_t * ht);
  * @param ll The linklist.
  * @param callback The routine to print items with.
  */
-PUBLIC void linklist_print(linklist_t * ll, void (*callback)(const void * item));
+void linklist_print(linklist_t * ll, void (*callback)(const void * item));
 
 /**
  * (Debug function, replacable by forEach)
@@ -359,7 +351,7 @@ PUBLIC void linklist_print(linklist_t * ll, void (*callback)(const void * item))
  * @param ht The hash table.
  * @param other Whether to recurse for migrating tables (other) as well.
  */
-PUBLIC void hashtab_printHead(hashtab_t * ht, int other);
+void hashtab_printHead(hashtab_t * ht, int other);
 
 /**
  * (Debug function, replacable by forEach)
@@ -369,6 +361,6 @@ PUBLIC void hashtab_printHead(hashtab_t * ht, int other);
  * @param ht The hash table.
  * @param callback The routine to print items with.
  */
-PUBLIC void hashtab_print(hashtab_t * ht, void (*callback)(const void * item));
+void hashtab_print(hashtab_t * ht, void (*callback)(const void * item));
 
 #endif
