@@ -84,7 +84,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
 #include <string.h>
 #include <time.h>
 
@@ -102,6 +101,16 @@
 #endif
 #ifndef PRIVATE
 #define PRIVATE static
+#endif
+
+#ifndef LLEXPORT
+#define LLEXPORT
+#endif
+
+#ifdef HASHTAB_NO_EXPORT_LL
+#undef LLEXPORT
+#define LLEXPORT static
+typedef struct hashtab_linklist linklist_t;
 #endif
 
 PRIVATE void * safeMalloc(size_t n){
@@ -142,7 +151,7 @@ PRIVATE void * safeRealloc(void * p, size_t n){
  * Start linklist functions.
  */
 
-PUBLIC linklist_t * linklist_make(void * item, linklist_t * next){
+LLEXPORT linklist_t * linklist_make(void * item, linklist_t * next){
 	linklist_t * ret = malloc(sizeof *ret);
 	ret->item = item;
 	ret->next = next;
@@ -150,7 +159,7 @@ PUBLIC linklist_t * linklist_make(void * item, linklist_t * next){
 	return ret;
 }
 
-PUBLIC linklist_t * linklist_add(linklist_t * ll, void * item){
+LLEXPORT linklist_t * linklist_add(linklist_t * ll, void * item){
 	if(ll->item == NULL){
 		ll->item = item;
 		
@@ -160,7 +169,7 @@ PUBLIC linklist_t * linklist_add(linklist_t * ll, void * item){
 	return linklist_make(item, ll);
 }
 
-PUBLIC linklist_t * linklist_find(linklist_t * ll, const void * item, 
+LLEXPORT linklist_t * linklist_find(linklist_t * ll, const void * item, 
 		int (*cmp)(const void * needle, const void * hay)){
 	while(ll){
 		if(cmp(item, ll->item) == 0){
@@ -173,7 +182,7 @@ PUBLIC linklist_t * linklist_find(linklist_t * ll, const void * item,
 	return NULL;
 }
 
-PUBLIC void linklist_forEach(linklist_t * ll, 
+LLEXPORT void linklist_forEach(linklist_t * ll, 
 		void (*callback)(void * item, void * ctx), void * ctx){
 	while(ll){
 		callback(ll->item, ctx);
@@ -181,7 +190,7 @@ PUBLIC void linklist_forEach(linklist_t * ll,
 	}
 }
 
-PUBLIC linklist_t * linklist_remove(linklist_t * ll, const void * item, 
+LLEXPORT linklist_t * linklist_remove(linklist_t * ll, const void * item, 
 		int (*cmp)(const void * a, const void * b), void ** ret){
 	linklist_t * next;
 	if(!ll){
@@ -202,14 +211,14 @@ PUBLIC linklist_t * linklist_remove(linklist_t * ll, const void * item,
 	return ll;
 }
 
-PUBLIC void linklist_free(linklist_t * ll){
+LLEXPORT void linklist_free(linklist_t * ll){
 	if(ll){
 		linklist_free(ll->next);
 		free(ll);
 	}
 }
 
-PUBLIC linklist_t * linklist_copy(const linklist_t * src, void * (cpy)(const
+LLEXPORT linklist_t * linklist_copy(const linklist_t * src, void * (cpy)(const
 		void * item, void * ctx), void * ctx){
 	linklist_t * ret = malloc(sizeof *ret);
 	
@@ -226,6 +235,19 @@ PUBLIC linklist_t * linklist_copy(const linklist_t * src, void * (cpy)(const
 	}
 	
 	return ret;
+}
+
+/* Print a linklist, using callback to print each item itself. */
+LLEXPORT void linklist_print(linklist_t * ll, void (*callback)(const void * item)){
+	while(ll){
+		callback(ll->item);
+		
+		if(ll->next){
+			printf(" -> ");
+		}
+		
+		ll = ll->next;
+	}
 }
 
 /*
@@ -547,20 +569,18 @@ PUBLIC void * hashtab_remove(hashtab_t * ht, const void * item){
 		}
 		
 		hashtab_moveOver(ht);
-	}else{
-		if(ret != NULL){
-			--ht->length;
-			
-			if(hash == ht->first){
-				hashtab_findFirst(ht, hash);
-			}
-			
-			if(ht->shrink && ht->size > ht->shrink &&
-					hashtab_load(ht) < 1.0f - ht->threshold){
-				hashtab_rehash(ht, (ht->size / 2 > ht->shrink ? 
-						ht->size / 2 : ht->shrink));
-				++ht->shrinks;
-			}
+	}else if(ret != NULL){
+		--ht->length;
+		
+		if(hash == ht->first){
+			hashtab_findFirst(ht, hash);
+		}
+		
+		if(ht->shrink && ht->size > ht->shrink &&
+				hashtab_load(ht) < 1.0f - ht->threshold){
+			hashtab_rehash(ht, (ht->size / 2 > ht->shrink ? 
+					ht->size / 2 : ht->shrink));
+			++ht->shrinks;
 		}
 	}
 	
@@ -604,19 +624,6 @@ PUBLIC void hashtab_free(hashtab_t * ht){
 	free(ht);
 }
 
-/* Print a linklist, using callback to print each item itself. */
-PUBLIC void linklist_print(linklist_t * ll, void (*callback)(const void * item)){
-	while(ll){
-		callback(ll->item);
-		
-		if(ll->next){
-			printf(" -> ");
-		}
-		
-		ll = ll->next;
-	}
-}
-
 /* Print meta-data about a hash table. */
 PUBLIC void hashtab_printHead(hashtab_t * ht, int other){
 	printf("size:    %u\n"
@@ -627,7 +634,7 @@ PUBLIC void hashtab_printHead(hashtab_t * ht, int other){
 		   "grows:   %u\n"
 		   "shrinks: %u\n"
 		   "moveR:   %u\n"
-		   "other:  %s\n\n", ht->size, ht->length, hashtab_load(ht), 
+		   "other:   %s\n\n", ht->size, ht->length, hashtab_load(ht), 
 				ht->threshold, ht->first, ht->grows, ht->shrinks, 
 				ht->moveR, (ht->other ? "yes" : "no"));
 	if(other && ht->other){

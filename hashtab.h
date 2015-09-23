@@ -87,6 +87,8 @@
 
 #include <stdlib.h>
 
+#ifndef HASHTAB_NO_EXPORT_LL
+
 /** A simple singly-linked list. */
 typedef struct linklist{
 	/** The stored item. */
@@ -94,6 +96,8 @@ typedef struct linklist{
 	/** The next link (or NULL). */
 	struct linklist * next;
 } linklist_t;
+
+#endif /* HASHTAB_NO_EXPORT_LL */
 
 /** A simple but effective hash table. */
 typedef struct hashtab{
@@ -122,7 +126,14 @@ typedef struct hashtab{
 	size_t shrinks;
 	
 	/** @private The items. */
+#ifdef HASHTAB_NO_EXPORT_LL
+	struct hashtab_linklist{
+		void * item;
+		struct hashtab_linklist * next;
+	} ** data;
+#else
 	linklist_t ** data;
+#endif
 	
 	/** @private When migrating: the next table, otherwise NULL. */
 	struct hashtab * other;
@@ -167,6 +178,8 @@ size_t hashtab_length(hashtab_t * ht);
  * @return The number of shrinks.
  */
 #define hashtab_shrinks(ht) (ht->shrinks)
+
+#ifndef HASHTAB_NO_EXPORT_LL
 
 /**
  * Allocate a linklist and fill it with an item and point it to the next.
@@ -242,6 +255,18 @@ linklist_t * linklist_copy(const linklist_t * src, void * (cpy)(const
  * @param ll The linklist.
  */
 void linklist_free(linklist_t * ll);
+
+/**
+ * (Debug function, replacable by forEach)
+ * 
+ * Prints all the links in a linklist, separated by '->'s.
+ * 
+ * @param ll The linklist.
+ * @param callback The routine to print items with.
+ */
+void linklist_print(linklist_t * ll, void (*callback)(const void * item));
+
+#endif /* HASHTAB_NO_EXPORT_LL */
 
 /**
  * Allocate and initialize a new hash table.
@@ -332,16 +357,6 @@ hashtab_t * hashtab_copy(const hashtab_t * src, void * (cpy)(const void
  * @param ht The hash table.
  */
 void hashtab_free(hashtab_t * ht);
-
-/**
- * (Debug function, replacable by forEach)
- * 
- * Prints all the links in a linklist, separated by '->'s.
- * 
- * @param ll The linklist.
- * @param callback The routine to print items with.
- */
-void linklist_print(linklist_t * ll, void (*callback)(const void * item));
 
 /**
  * (Debug function, replacable by forEach)
