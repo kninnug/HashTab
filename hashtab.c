@@ -1,9 +1,31 @@
 /**
  * HashTab: a simple but effective hash table implementation.
  * @author  Marco Gunnink <marco@kninnug.nl>
- * @date    2015-06-09
- * @version 2.1.1
+ * @date    2015-11-09
+ * @version 2.2.0
  * @file    hashtab.c
+ *
+ * To use: copy hashtab.c & hashtab.h into your project. 
+ *
+ *     #include "hashtab.h"
+ *
+ * and compile with: 
+ *
+ *     cc myProgram.c hashtab.c
+ *
+ * For some example hash functions, copy GeneralHashFunctions.h & .c.
+ *
+ *     #include "GeneralHashFunctions.h"
+ *
+ * and compile with:
+ *
+ *     cc myProgram.c hashtab.c GeneralHashFunctions.c
+ *
+ * 1. Define callbacks for hashing and comparison.
+ * 2. Allocate and initialise a hash table with hashtab_make.
+ * 3. Add or insert items with hashtab_add or hashtab_insert.
+ * 4. Retrieve items with hashtab_find.
+ * 5. Clean up the hash table with hashtab_free.
  * 
  * The hash table uses (singly-)linked lists to avoid collisions and incremental
  * resizing to grow the table when its load factor exceeds a provided value.
@@ -59,6 +81,11 @@
  * - remove: Remove an item from the hash table.
  * - copy: Make a shallow or deep copy.
  *
+ * By default the hashtab_s and linklist_s types and related functions are 
+ * exported, when compiled with HASHTAB_NO_EXPORT_LL defined it will not export
+ * linklist_s or its related functions, though they will still be compiled for
+ * internal use.
+ *
  * License MIT:
  *
  * Copyright (c) 2015 Marco Gunnink
@@ -110,7 +137,7 @@
 #ifdef HASHTAB_NO_EXPORT_LL
 #undef LLEXPORT
 #define LLEXPORT static
-typedef struct hashtab_linklist linklist_t;
+typedef struct hashtab_linklist linklist_s;
 #endif
 
 PRIVATE void * safeMalloc(size_t n){
@@ -119,16 +146,6 @@ PRIVATE void * safeMalloc(size_t n){
 		fprintf(stderr, "malloc(%u) failed\n", n);
 		exit(1);
 	}
-	return p;
-}
-
-PRIVATE void * safeCalloc(size_t n, size_t s){
-	void * p = calloc(n, s);
-	if(!p){
-		fprintf(stderr, "calloc(%u, %u) failed\n", n, s);
-		exit(1);
-	}
-	
 	return p;
 }
 
@@ -141,25 +158,21 @@ PRIVATE void * safeRealloc(void * p, size_t n){
 	return np;
 }
 
-#define malloc(n) safeMalloc(n)
-#define calloc(n, s) safeCalloc(n, s)
-#define realloc(p, n) safeRealloc(p, n)
-
 #endif
 
 /*
  * Start linklist functions.
  */
 
-LLEXPORT linklist_t * linklist_make(void * item, linklist_t * next){
-	linklist_t * ret = malloc(sizeof *ret);
+LLEXPORT linklist_s * linklist_make(void * item, linklist_s * next){
+	linklist_s * ret = safeMalloc(sizeof *ret);
 	ret->item = item;
 	ret->next = next;
 	
 	return ret;
 }
 
-LLEXPORT linklist_t * linklist_add(linklist_t * ll, void * item){
+LLEXPORT linklist_s * linklist_add(linklist_s * ll, void * item){
 	if(ll->item == NULL){
 		ll->item = item;
 		
@@ -169,7 +182,7 @@ LLEXPORT linklist_t * linklist_add(linklist_t * ll, void * item){
 	return linklist_make(item, ll);
 }
 
-LLEXPORT linklist_t * linklist_find(linklist_t * ll, const void * item, 
+LLEXPORT linklist_s * linklist_find(linklist_s * ll, const void * item, 
 		int (*cmp)(const void * needle, const void * hay)){
 	while(ll){
 		if(cmp(item, ll->item) == 0){
@@ -182,7 +195,7 @@ LLEXPORT linklist_t * linklist_find(linklist_t * ll, const void * item,
 	return NULL;
 }
 
-LLEXPORT void linklist_forEach(linklist_t * ll, 
+LLEXPORT void linklist_forEach(linklist_s * ll, 
 		void (*callback)(void * item, void * ctx), void * ctx){
 	while(ll){
 		callback(ll->item, ctx);
@@ -190,9 +203,9 @@ LLEXPORT void linklist_forEach(linklist_t * ll,
 	}
 }
 
-LLEXPORT linklist_t * linklist_remove(linklist_t * ll, const void * item, 
+LLEXPORT linklist_s * linklist_remove(linklist_s * ll, const void * item, 
 		int (*cmp)(const void * a, const void * b), void ** ret){
-	linklist_t * next;
+	linklist_s * next;
 	if(!ll){
 		return NULL;
 	}
@@ -211,16 +224,16 @@ LLEXPORT linklist_t * linklist_remove(linklist_t * ll, const void * item,
 	return ll;
 }
 
-LLEXPORT void linklist_free(linklist_t * ll){
+LLEXPORT void linklist_free(linklist_s * ll){
 	if(ll){
 		linklist_free(ll->next);
 		free(ll);
 	}
 }
 
-LLEXPORT linklist_t * linklist_copy(const linklist_t * src, void * (cpy)(const
+LLEXPORT linklist_s * linklist_copy(const linklist_s * src, void * (cpy)(const
 		void * item, void * ctx), void * ctx){
-	linklist_t * ret = malloc(sizeof *ret);
+	linklist_s * ret = safeMalloc(sizeof *ret);
 	
 	if(src->next){
 		ret->next = linklist_copy(src->next, cpy, ctx);
@@ -238,7 +251,7 @@ LLEXPORT linklist_t * linklist_copy(const linklist_t * src, void * (cpy)(const
 }
 
 /* Print a linklist, using callback to print each item itself. */
-LLEXPORT void linklist_print(linklist_t * ll, void (*callback)(const void * item)){
+LLEXPORT void linklist_print(linklist_s * ll, void (*callback)(const void * item)){
 	while(ll){
 		callback(ll->item);
 		
@@ -254,7 +267,7 @@ LLEXPORT void linklist_print(linklist_t * ll, void (*callback)(const void * item
  * Start hashtab functions.
  */
  
-PUBLIC size_t hashtab_length(hashtab_t * ht){
+PUBLIC size_t hashtab_length(hashtab_s * ht){
 	return ht->length + (ht->other ? hashtab_length(ht->other) : 0);
 }
 
@@ -268,7 +281,7 @@ PUBLIC size_t hashtab_length(hashtab_t * ht){
  * @param ll The link.
  * @return The hash of the item added.
  */
-PRIVATE size_t hashtab_addLink(hashtab_t * ht, linklist_t * link){
+PRIVATE size_t hashtab_addLink(hashtab_s * ht, linklist_s * link){
 	size_t hash = ht->hasher(link->item) % ht->size;
 	
 	link->next = NULL;
@@ -295,9 +308,9 @@ PRIVATE size_t hashtab_addLink(hashtab_t * ht, linklist_t * link){
  * @param link The linklist.
  * @return The number of items added.
  */
-PRIVATE size_t hashtab_linkAdd(hashtab_t * ht, linklist_t * ll){
+PRIVATE size_t hashtab_linkAdd(hashtab_s * ht, linklist_s * ll){
 	size_t ret = 0;
-	linklist_t * next;
+	linklist_s * next;
 	
 	while(ll){
 		next = ll->next;
@@ -321,7 +334,7 @@ PRIVATE size_t hashtab_linkAdd(hashtab_t * ht, linklist_t * ll){
  *        no filled slots before this.
  * @return The updated ht->first.
  */
-PRIVATE size_t hashtab_findFirst(hashtab_t * ht, size_t i){
+PRIVATE size_t hashtab_findFirst(hashtab_s * ht, size_t i){
 	for(; i < ht->size && ht->data[i] == NULL; ++i);
 	
 	return ht->first = i;
@@ -334,9 +347,9 @@ PRIVATE size_t hashtab_findFirst(hashtab_t * ht, size_t i){
  *
  * @param ht The hash table.
  */
-PRIVATE void hashtab_moveOver(hashtab_t * ht){
+PRIVATE void hashtab_moveOver(hashtab_s * ht){
 	size_t i, moved;
-	linklist_t * link;
+	linklist_s * link;
 	
 	for(i = 0; i < ht->size / ht->moveR && ht->length > 0; ++i){
 		link = ht->data[ht->first];
@@ -372,10 +385,10 @@ PRIVATE void hashtab_moveOver(hashtab_t * ht){
  * @param newSize The size of the new data store.
  * @return The smallest non-empty index.
  */
-PRIVATE size_t hashtab_rehashLink(linklist_t * ll, hashtab_t * ht, 
-		linklist_t ** newData, size_t newSize){
+PRIVATE size_t hashtab_rehashLink(linklist_s * ll, hashtab_s * ht, 
+		linklist_s ** newData, size_t newSize){
 	size_t hash, first = newSize;
-	linklist_t * next;
+	linklist_s * next;
 	
 	while(ll){
 		next = ll->next;
@@ -401,18 +414,18 @@ PRIVATE size_t hashtab_rehashLink(linklist_t * ll, hashtab_t * ht,
  * @private
  *
  * Re-hashes the entire table after either growing or shrinking. This re-hashing
- * is done inline, so some items may be re-hashed (at most) twice. Also reallocs
+ * is done inline, so some items may be re-hashed (at most) twice. Also safeReallocs
  * the data store of the table either before or after.
  *
  * @param ht The hash table.
  * @param newSize The new size of the table.
  */
-PRIVATE void hashtab_rehash(hashtab_t * ht, size_t newSize){
+PRIVATE void hashtab_rehash(hashtab_s * ht, size_t newSize){
 	size_t i, tfirst, first = newSize;
-	linklist_t * tdata;
+	linklist_s * tdata;
 	
 	if(newSize > ht->size){ /* growth */
-		ht->data = realloc(ht->data, newSize * sizeof *ht->data);
+		ht->data = safeRealloc(ht->data, newSize * sizeof *ht->data);
 		for(i = ht->size; i < newSize; i++){
 			ht->data[i] = NULL;
 		}
@@ -433,7 +446,7 @@ PRIVATE void hashtab_rehash(hashtab_t * ht, size_t newSize){
 	ht->first = first;
 	
 	if(newSize < ht->size){ /* shrinkage */
-		ht->data = realloc(ht->data, ht->size * sizeof *ht->data);
+		ht->data = safeRealloc(ht->data, ht->size * sizeof *ht->data);
 	}
 	
 	ht->size = newSize;
@@ -447,8 +460,8 @@ PRIVATE void hashtab_rehash(hashtab_t * ht, size_t newSize){
  *
  * @param ht The hash table.
  */
-PRIVATE void hashtab_grow(hashtab_t * ht){
-	/* special case: no incremental resizing, but complete rehashing. */
+PRIVATE void hashtab_grow(hashtab_s * ht){
+	/* special case: no incremental resizing, but a complete rehash. */
 	if(ht->moveR == 1){
 		hashtab_rehash(ht, ht->size * 2);
 	}else{
@@ -468,10 +481,10 @@ PRIVATE void hashtab_grow(hashtab_t * ht){
  * @param item The item to find.
  * @return The link containing the item, or NULL if it's not in the table.
  */
-PRIVATE linklist_t * hashtab_findLink(hashtab_t * ht, const void * item){
+PRIVATE linklist_s * hashtab_findLink(hashtab_s * ht, const void * item){
 	size_t hash = ht->hasher(item) % ht->size;
 	
-	linklist_t * datum = linklist_find(ht->data[hash], item, ht->cmp);
+	linklist_s * datum = linklist_find(ht->data[hash], item, ht->cmp);
 	
 	if(datum == NULL && ht->other){
 		return hashtab_findLink(ht->other, item);
@@ -480,11 +493,11 @@ PRIVATE linklist_t * hashtab_findLink(hashtab_t * ht, const void * item){
 	return datum;
 }
 
-PUBLIC hashtab_t * hashtab_make(size_t size, 
+PUBLIC hashtab_s * hashtab_make(size_t size, 
 		size_t (*hasher)(const void * item), 
 		int (*cmp)(const void * a, const void * b), float threshold, 
 		size_t moveR, int shrink){
-	hashtab_t * ret = malloc(sizeof *ret);
+	hashtab_s * ret = safeMalloc(sizeof *ret);
 	ret->size = size;
 	ret->length = 0;
 	
@@ -499,13 +512,17 @@ PUBLIC hashtab_t * hashtab_make(size_t size,
 	ret->grows = 0;
 	ret->shrinks = 0;
 	
-	ret->data = calloc(size, sizeof *(ret->data));
+	ret->data = safeMalloc(size * sizeof *(ret->data));
 	ret->other = NULL;
+	
+	for(size_t i = 0; i < size; i++){
+		ret->data[i] = NULL;
+	}
 	
 	return ret;
 }
 
-PUBLIC size_t hashtab_add(hashtab_t * ht, void * item){
+PUBLIC size_t hashtab_add(hashtab_s * ht, void * item){
 	if(!ht->other && hashtab_load(ht) > ht->threshold){
 		hashtab_grow(ht);
 	}
@@ -521,14 +538,14 @@ PUBLIC size_t hashtab_add(hashtab_t * ht, void * item){
 	return ht->length;
 }
 
-PUBLIC void * hashtab_find(hashtab_t * ht, const void * item){
-	linklist_t * link = hashtab_findLink(ht, item);
+PUBLIC void * hashtab_find(hashtab_s * ht, const void * item){
+	linklist_s * link = hashtab_findLink(ht, item);
 	
 	return link ? link->item : NULL;
 }
 
-PUBLIC void * hashtab_insert(hashtab_t * ht, void * item){
-	linklist_t * link = hashtab_findLink(ht, item);
+PUBLIC void * hashtab_insert(hashtab_s * ht, void * item){
+	linklist_s * link = hashtab_findLink(ht, item);
 	void * ret = NULL;
 	
 	if(link){
@@ -541,7 +558,7 @@ PUBLIC void * hashtab_insert(hashtab_t * ht, void * item){
 	return ret;
 }
 
-PUBLIC void hashtab_forEach(hashtab_t * ht, 
+PUBLIC void hashtab_forEach(hashtab_s * ht, 
 		void (*callback)(void * item, void * ctx), void * ctx){
 	size_t i;
 	
@@ -556,7 +573,7 @@ PUBLIC void hashtab_forEach(hashtab_t * ht,
 	}
 }
 
-PUBLIC void * hashtab_remove(hashtab_t * ht, const void * item){
+PUBLIC void * hashtab_remove(hashtab_s * ht, const void * item){
 	void * ret = NULL;
 	size_t hash = ht->hasher(item) % ht->size;
 	
@@ -587,18 +604,20 @@ PUBLIC void * hashtab_remove(hashtab_t * ht, const void * item){
 	return ret;
 }
 
-PUBLIC hashtab_t * hashtab_copy(const hashtab_t * src, void * (cpy)(const void
+PUBLIC hashtab_s * hashtab_copy(const hashtab_s * src, void * (cpy)(const void
 		* item, void * ctx), void * ctx){
-	hashtab_t * ret = malloc(sizeof *ret);
+	hashtab_s * ret = safeMalloc(sizeof *ret);
 	size_t i;
 	
 	memcpy(ret, src, sizeof *ret);
 	
-	ret->data = calloc(ret->size, sizeof *ret->data);
+	ret->data = safeMalloc(ret->size * sizeof *ret->data);
 	
 	for(i = 0; i < ret->size; i++){
 		if(src->data[i]){
 			ret->data[i] = linklist_copy(src->data[i], cpy, ctx);
+		}else{
+			ret->data[i] = NULL;
 		}
 	}
 	
@@ -609,7 +628,7 @@ PUBLIC hashtab_t * hashtab_copy(const hashtab_t * src, void * (cpy)(const void
 	return ret;
 }
 
-PUBLIC void hashtab_free(hashtab_t * ht){
+PUBLIC void hashtab_free(hashtab_s * ht){
 	size_t i;
 	
 	if(ht->other){
@@ -625,7 +644,7 @@ PUBLIC void hashtab_free(hashtab_t * ht){
 }
 
 /* Print meta-data about a hash table. */
-PUBLIC void hashtab_printHead(hashtab_t * ht, int other){
+PUBLIC void hashtab_printHead(hashtab_s * ht, int other){
 	printf("size:    %u\n"
 		   "length:  %u\n"
 		   "load:    %f\n"
@@ -643,7 +662,7 @@ PUBLIC void hashtab_printHead(hashtab_t * ht, int other){
 }
 
 /* Print the hash table using callback to print each item itself. */
-PUBLIC void hashtab_print(hashtab_t * ht, void (*callback)(const void * item)){
+PUBLIC void hashtab_print(hashtab_s * ht, void (*callback)(const void * item)){
 	size_t i;
 	
 	hashtab_printHead(ht, 0);
