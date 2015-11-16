@@ -224,9 +224,13 @@ LLEXPORT linklist_s * linklist_remove(linklist_s * ll, const void * item,
 	return ll;
 }
 
-LLEXPORT void linklist_free(linklist_s * ll){
+LLEXPORT void linklist_free(linklist_s * ll, void (*cb)(void * item, void * ctx),
+		void * ctx){
 	if(ll){
-		linklist_free(ll->next);
+		linklist_free(ll->next, cb, ctx);
+		if(cb){
+			cb(ll->item, ctx);
+		}
 		free(ll);
 	}
 }
@@ -628,15 +632,16 @@ PUBLIC hashtab_s * hashtab_copy(const hashtab_s * src, void * (cpy)(const void
 	return ret;
 }
 
-PUBLIC void hashtab_free(hashtab_s * ht){
+PUBLIC void hashtab_free(hashtab_s * ht, void (*cb)(void * item, void * ctx),
+		void * ctx){
 	size_t i;
 	
 	if(ht->other){
-		hashtab_free(ht->other);
+		hashtab_free(ht->other, cb, ctx);
 	}
 	
 	for(i = 0; i < ht->size; ++i){
-		linklist_free(ht->data[i]);
+		linklist_free(ht->data[i], cb, ctx);
 	}
 	
 	free(ht->data);

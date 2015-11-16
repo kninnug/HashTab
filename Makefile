@@ -15,6 +15,9 @@ hashtab.o: hashtab.c hashtab.h
 test: test.c hashtab.o GeneralHashFunctions.o
 	$(CC) $(OPTS) $(CFLAGS) -o test test.c GeneralHashFunctions.o hashtab.o
 
+test-sm: test-sm.c hashtab.o GeneralHashFunctions.o stringmap.h
+	$(CC) $(OPTS) $(CFLAGS) -o test-sm test-sm.c hashtab.o GeneralHashFunctions.o
+
 clean:
 	rm -f *.o
 	rm -f *.exe

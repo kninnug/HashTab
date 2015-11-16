@@ -117,11 +117,8 @@ int main(void){
 		printf("Find key (empty line to quit): "); fflush(stdout);
 	}
 	
-	/* Clean up values with the free callback */
-	hashtab_forEach(ht, KVfree, NULL);
-	
-	/* Clean up hashtab itself */
-	hashtab_free(ht);
+	/* Clean up values with the free callback and the hash table itself */
+	hashtab_free(ht, KVfree, NULL);
 	
 	return 0;
 }

@@ -273,15 +273,19 @@ linklist_s * linklist_remove(linklist_s * ll, const void * item,
  * @param ctx A context-pointer for the callback.
  * @return A copy of the linklist.
  */
-linklist_s * linklist_copy(const linklist_s * src, void * (cpy)(const
+linklist_s * linklist_copy(const linklist_s * src, void * (*cpy)(const
 		void * item, void * ctx), void * ctx);
 
 /**
  * Free the linklist.
  *
  * @param ll The linklist.
+ * @param cb A callback to free the items left in the linklist. May be NULL,
+ *        if the items need no freeing.
+ * @param ctx A context pointer for the callback.
  */
-void linklist_free(linklist_s * ll);
+void linklist_free(linklist_s * ll, void (*cb)(void * item, void * ctx),
+		void * ctx);
 
 /**
  * (Debug function, replacable by forEach)
@@ -382,8 +386,12 @@ hashtab_s * hashtab_copy(const hashtab_s * src, void * (cpy)(const void
  * Free the hash table.
  *
  * @param ht The hash table.
+ * @param cb A callback to free the items left in the hash table. May be NULL,
+ *        if the items need no freeing.
+ * @param ctx A context pointer for the callback.
  */
-void hashtab_free(hashtab_s * ht);
+void hashtab_free(hashtab_s * ht, void (cb)(void * item, void * ctx),
+		void * ctx);
 
 /**
  * (Debug function, replacable by forEach)
