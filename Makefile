@@ -18,8 +18,12 @@ test: test.c hashtab.o GeneralHashFunctions.o
 test-sm: test-sm.c hashtab.o GeneralHashFunctions.o stringmap.h
 	$(CC) $(OPTS) $(CFLAGS) -o test-sm test-sm.c hashtab.o GeneralHashFunctions.o
 
+docs:
+	doxygen doc/Doxyfile
+
 clean:
 	rm -f *.o
 	rm -f *.exe
 	rm -f *~
 	rm -f test
+	rm -rf ./doc/generated

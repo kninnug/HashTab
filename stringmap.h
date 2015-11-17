@@ -1,8 +1,32 @@
 /** ***************************************************************************
+ * @file stringmap.h
+ *
  * A simple wrapper around HashTab to create string -> item mappings. Usually,
  * you want to use this instead of HashTab directly. The operations are mostly
  * the same as those for HashTab, except that the callbacks are already
  * provided.
+ *
+ * Quick start:
+ * @code{.c}
+ *
+ * // Make a stringmap
+ * hashtab_s * ht = stringmap_make(8, 0.75, 4, 0); // note: returns a hashtab
+ * // Add key-value. Note: both they key and value must remain allocated as long
+ * // as they are in the stringmap.
+ * stringmap_add(ht, "one", "alpha");
+ * // Find item
+ * char * found = stringmap_find(ht, "one");
+ * if(found){ // != NULL
+ *     printf("one -> %s\n", found);
+ * }else{
+ *     printf("not found\n");
+ * }
+ * // Remove item (optional)
+ * stringmap_remove(ht, "one");
+ * // Clean up stringmap. Also removes any items left in the table
+ * stringmap_free(ht, NULL, NULL); // no callback for freeing items necessary
+ *
+ * @endcode
  **************************************************************************** */
 
 #ifndef STRINGMAP_H
@@ -28,7 +52,7 @@ struct stringmap{
 };
 
 struct stringmap__cb{
-	void (*cb)(void * item, void * ctx);
+	void (*cb)(const char * key, void * item, void * ctx);
 	void * ctx;
 };
 
@@ -60,10 +84,13 @@ static int stringmap__cmp(const void * va, const void * vb){
  * The free-callback.
  */
 static void stringmap__free(void * v, void * vctx){
+	stringmap_s * sm = v;
 	struct stringmap__cb * ctx = vctx;
+	
 	if(ctx->cb){
-		ctx->cb(v, ctx->ctx);
+		ctx->cb(sm->key, sm->item, ctx->ctx);
 	}
+	
 	free(v);
 }
 
@@ -76,7 +103,7 @@ static void stringmap__forEach(void * v, void * vctx){
 	stringmap_s * sm = v;
 	struct stringmap__cb * ctx = vctx;
 	
-	ctx->cb(sm->item, ctx->ctx);
+	ctx->cb(sm->key, sm->item, ctx->ctx);
 }
 
 /**
@@ -184,8 +211,8 @@ static inline void * stringmap_remove(hashtab_s * ht, const char * key){
  * @param cb The callback to invoke.
  * @param ctx An additional context-pointer for the callback.
  */
-static inline void stringmap_forEach(hashtab_s * ht, void (*cb)(void * item,
-		void * ctx), void * ctx){
+static inline void stringmap_forEach(hashtab_s * ht, void (*cb)(const char * key,
+		void * item, void * ctx), void * ctx){
 	struct stringmap__cb feCtx = {cb, ctx};
 	
 	hashtab_forEach(ht, stringmap__forEach, &feCtx);
@@ -199,9 +226,10 @@ static inline void stringmap_forEach(hashtab_s * ht, void (*cb)(void * item,
  *        no freeing is necessary.
  * @param ctx An additional context-pointer for the callback.
  */
-static inline void stringmap_free(hashtab_s * ht, void (*cb)(void * item,
-		void * ctx), void * ctx){
+static inline void stringmap_free(hashtab_s * ht, void (*cb)(const char * key,
+		void * item, void * ctx), void * ctx){
 	struct stringmap__cb frCtx = {cb, ctx};
+	
 	hashtab_free(ht, stringmap__free, &frCtx);
 }
 

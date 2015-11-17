@@ -1,31 +1,72 @@
 HashTab: a simple but effective hash table implementation.
 ==========================================================
 
-Author: Marco Gunnink <marco@kninnug.nl>
-Date: 2015-11-09
-Version 2.2.0
+Author:  Marco Gunnink <marco@kninnug.nl>  
+Date:    2015-11-18  
+Version: 3.0.0  
 
-To use: copy hashtab.c & hashtab.h into your project. 
+Quick start:
 
-    #include "hashtab.h"
-
-and compile with: 
+Copy `hashtab.h` & `hashtab.c` into your project. Include `hashtab.h` and
+compile `hashtab.c` along with your other files:
 
     cc myProgram.c hashtab.c
 
-For some example hash functions, copy GeneralHashFunctions.h & .c.
+In `myProgram.c`:
 
-    #include "GeneralHashFunctions.h"
+    #include <stdio.h>
+    #include "hashtab.h"
+    
+    // Hash callback
+    size_t intHash(const void * v){
+        return *(const int*)v;
+    }
+    
+    // Comparison callback
+    int intCmp(const void * va, const void * vb){
+        return *(const int*)va - *(const int*)vb;
+    }
+    
+    int main(){
+        size_t size = 8, moveR = 4;
+        int shrink = 1;
+        float threshold = 0.75;
+        
+        int items[] = {12, 34, 56, 78, 90};
+        
+        // Make hash table
+        hashtab_s * ht = hashtab_make(size, intHash, intCmp, threshold, moveR,
+            shrink);
+        
+        // Fill with items
+        for(int i = 0; i < sizeof items / sizeof *items; i++){
+            hashtab_add(ht, items + i); // &items[i]
+        }
+        
+        // Find an item
+        int * found = hashtab_find(ht, (int[]){34}); // compound literal for pointer to int of 34
+        if(found){ // != NULL
+            printf("Found: %i", *found);
+        }else{
+            printf("Not found");
+        }
+        
+        // Clean up. No additional freeing necessary for the items
+        hashtab_free(ht, NULL, NULL);
+        
+        return 0;
+    }
 
-and compile with:
+In short:
 
-    cc myProgram.c hashtab.c GeneralHashFunctions.c
-
-1. Define callbacks for hashing and comparison.
-2. Allocate and initialise a hash table with `hashtab_make`.
-3. Add or insert items with `hashtab_add` or `hashtab_insert`.
-4. Retrieve items with `hashtab_find`.
-5. Clean up the hash table with `hashtab_free`.
+ 1. Define callbacks for hashing and (exact) comparison.
+ 2. Allocate and initialize a hash-table with `hashtab_make`.
+ 3. Fill it with `hashtab_add` and/or `hashtab_insert`.
+ 4. Find items with `hashtab_find`.
+ 5. Remove items with `hashtab_remove`.
+ 6. Clean up the hash-table with `hashtab_free`.
+ 
+See the doc-comments in hashtab.h or generated documentation for more details.
 
 The hash table uses (singly-)linked lists to avoid collisions and incremental
 resizing to grow the table when its load factor exceeds a provided value.
@@ -109,8 +150,6 @@ authors or copyright holders be liable for any claim, damages or other
 liability, whether in an action of contract, tort or otherwise, arising from,
 out of or in connection with the software or the use or other dealings in
 the software.
-
-License: MIT (see LICENSE)
 
 [Example hash functions][ghc] collected by [Arash Partow][ap].
 
