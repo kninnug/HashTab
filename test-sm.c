@@ -5,7 +5,7 @@
 #include "GeneralHashFunctions.h"
 #include "stringmap.h"
 
-int dmain(){
+int main(){
 	size_t size = 8, moveR = 4;
 	int shrink = 1;
 	float threshold = 0.75;

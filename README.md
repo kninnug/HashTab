@@ -5,6 +5,55 @@ Author:  Marco Gunnink <marco@kninnug.nl>
 Date:    2015-11-18  
 Version: 3.0.0  
 
+Quicker start:
+
+If you only want to map strings (`const char *`) to 'items', use `stringmap.h`,
+which is simpler. Copy `hashtab.h`, `hashtab.c` and `stringmap.h` into your
+project (there is no `stringmap.c`). And compile along with your other files:
+
+    cc myProgram.c hashtab.c
+
+In `myProgram.c`:
+
+    #include <stdio.h>
+    #include "stringmap.h" // includes hashtab.h as well
+    
+    int main(){
+        size_t size = 8, moveR = 4;
+        int shrink = 0;
+        float threshold = 0.75;
+        
+        // Make stringmap (a hashtab)
+        hashtab_s * ht = stringmap_make(size, threshold, moveR, shrink);
+        
+        // Add items. Note that they must remain allocated as long as they are
+        // in the hashtab/stringmap.
+        stringmap_add(ht, "one", "alpha");
+        stringmap_add(ht, "two", "beta");
+        
+        // Find item
+        char * found = stringmap_find(ht, "one");
+        if(found){ // != NULL
+            printf("Found: %s", found);
+        }else{
+            printf("Not found");
+        }
+        
+        // Remove item
+        stringmap_remove(ht, "one");
+        
+        // Clean up. No callbacks for freeing the items here. If your items do
+        // need additional cleanup, define a callback that accepts a
+        // - const char * key
+        // - void * item
+        // - void * ctx
+        // and pass it as the second argument. The third argument (`ctx) is 
+        // passed to the callback for additional data.
+        stringmap_free(ht, NULL, NULL);
+        
+        return 0;
+    }
+
 Quick start:
 
 Copy `hashtab.h` & `hashtab.c` into your project. Include `hashtab.h` and

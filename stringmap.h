@@ -43,6 +43,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "hashtab.h"
+
 struct stringmap;
 typedef struct stringmap stringmap_s;
 
