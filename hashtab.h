@@ -35,17 +35,13 @@
 
 #include <stdlib.h>
 
-#ifndef HASHTAB_NO_EXPORT_LL
-
-/** A simple singly-linked list. */
-typedef struct linklist{
-	/** The stored item. */
-	void * item;
-	/** The next link (or NULL). */
-	struct linklist * next;
-} linklist_s;
-
-#endif /* HASHTAB_NO_EXPORT_LL */
+/** A list of void *'s. */
+typedef struct hashtab__varray{
+	size_t size;
+	size_t length;
+	
+	void ** data;
+} hashtab__varray_s;
 
 /** A simple but effective hash table. */
 typedef struct hashtab{
@@ -74,14 +70,7 @@ typedef struct hashtab{
 	size_t shrinks;
 	
 	/** @private The items. */
-#ifdef HASHTAB_NO_EXPORT_LL
-	struct hashtab_linklist{
-		void * item;
-		struct hashtab_linklist * next;
-	} ** data;
-#else
-	linklist_s ** data;
-#endif
+	hashtab__varray_s ** data;
 	
 	/** @private When migrating: the next table, otherwise NULL. */
 	struct hashtab * other;
@@ -126,99 +115,6 @@ size_t hashtab_length(hashtab_s * ht);
  * @return The number of shrinks.
  */
 #define hashtab_shrinks(ht) (ht->shrinks)
-
-#ifndef HASHTAB_NO_EXPORT_LL
-
-/**
- * Allocate a linklist and fill it with an item and point it to the next.
- *
- * @param item The item.
- * @param next The next node, or NULL.
- * @return The new link.
- */
-linklist_s * linklist_make(void * item, linklist_s * next);
-
-/**
- * Add the supplied item to the linklist. If ll has no item it will be stored
- * there, else a new link will be made, item will be stored there and it's
- * next will point to ll.
- *
- * @param ll The linklist to add to.
- * @param item The item.
- * @return Either ll (with ll->item == item) or a new link, that points to ll.
- */
-linklist_s * linklist_add(linklist_s * ll, void * item);
-
-/**
- * Find the link that contains item.
- *
- * @param ll The linklist to start with.
- * @param item The item to find.
- * @param cmp A function that gets item as its first argument, and a candidate
- *        as the second. It must return 0 if they are considered equal.
- * @return The link containing item, or NULL if not found.
- */
-linklist_s * linklist_find(linklist_s * ll, const void * item, 
-		int (*cmp)(const void * needle, const void * hay));
-
-/**
- * Apply a function for each item in a linklist.
- * 
- * @param ll The linklist.
- * @param callback The function. The first argument is the item in the list,
- *        the second is ctx.
- * @param ctx A context also supplied to the callback.
- */
-void linklist_forEach(linklist_s * ll, void (*callback)(void * item, void * ctx), 
-		void * ctx);
-
-/**
- * Remove the link containing item.
- *
- * @param ll The linklist.
- * @param item The item.
- * @param cmp A function that gets item as its first argument, and a candidate
- *        as the second. It must return 0 if they are considered equal.
- * @param [out] ret The removed item will be placed here, if not NULL.
- * @return The remaining list (possibly NULL).
- */
-linklist_s * linklist_remove(linklist_s * ll, const void * item, 
-		int (*cmp)(const void * a, const void * b), void ** ret);
-
-/**
- * Makes a copy of the linklist. The cpy-callback is used to make copies of the
- * items. If cpy is NULL the original pointers are copied.
- *
- * @param src The original linklist.
- * @param cpy The callback to copy items with.
- * @param ctx A context-pointer for the callback.
- * @return A copy of the linklist.
- */
-linklist_s * linklist_copy(const linklist_s * src, void * (*cpy)(const
-		void * item, void * ctx), void * ctx);
-
-/**
- * Free the linklist.
- *
- * @param ll The linklist.
- * @param cb A callback to free the items left in the linklist. May be NULL,
- *        if the items need no freeing.
- * @param ctx A context pointer for the callback.
- */
-void linklist_free(linklist_s * ll, void (*cb)(void * item, void * ctx),
-		void * ctx);
-
-/**
- * (Debug function, replacable by forEach)
- * 
- * Prints all the links in a linklist, separated by '->'s.
- * 
- * @param ll The linklist.
- * @param callback The routine to print items with.
- */
-void linklist_print(linklist_s * ll, void (*callback)(const void * item));
-
-#endif /* HASHTAB_NO_EXPORT_LL */
 
 /**
  * Allocate and initialize a new hash table.

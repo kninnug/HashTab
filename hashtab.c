@@ -43,15 +43,7 @@
 #include HAVE_UTIL_H
 #else
 
-#ifndef LLEXPORT
-#define LLEXPORT
-#endif
-
-#ifdef HASHTAB_NO_EXPORT_LL
-#undef LLEXPORT
-#define LLEXPORT static
-typedef struct hashtab_linklist linklist_s;
-#endif
+typedef hashtab__varray_s varray_s;
 
 static void * safeMalloc(size_t n){
 	void * p = malloc(n);
@@ -74,109 +66,165 @@ static void * safeRealloc(void * p, size_t n){
 #endif
 
 /*
- * Start linklist functions.
+ * Start varray functions
  */
+ 
+#ifndef VAPRIVATE
+#	define VAPRIVATE static
+#endif
+ 
+#define varray_size(va) (va->size)
+#define varray_length(va) (va->length)
+#define varray_data(va) (va->data)
+#define varray_list(va) varray_data(va)
 
-LLEXPORT linklist_s * linklist_make(void * item, linklist_s * next){
-	linklist_s * ret = safeMalloc(sizeof *ret);
-	ret->item = item;
-	ret->next = next;
+VAPRIVATE varray_s * varray_init(varray_s * va, size_t sz){
+	if(!sz){
+		sz = 2;
+	}
+	
+	va->size = sz;
+	va->length = 0;
+	va->data = safeMalloc(va->size * sizeof *va->data);
+	
+	return va;
+}
+
+VAPRIVATE varray_s * varray_make(size_t sz){
+	varray_s * ret = safeMalloc(sizeof *ret);
+	
+	return varray_init(ret, sz);
+}
+
+VAPRIVATE varray_s * varray_copy(varray_s * src, void * (*cpy)(const void * item,
+		void * ctx), void * ctx){
+	varray_s * ret = varray_make(src->size);
+	size_t i;
+	
+	ret->length = src->length;
+	
+	for(i = 0; i < ret->length; i++){
+		ret->data[i] = cpy(src->data[i], ctx);
+	}
 	
 	return ret;
 }
 
-LLEXPORT linklist_s * linklist_add(linklist_s * ll, void * item){
-	if(ll->item == NULL){
-		ll->item = item;
-		
-		return ll;
-	}
+VAPRIVATE void varray_free(varray_s * va, void (*cb)(void * item, void * ctx),
+		void * ctx){
+	size_t i;
 	
-	return linklist_make(item, ll);
-}
-
-LLEXPORT linklist_s * linklist_find(linklist_s * ll, const void * item, 
-		int (*cmp)(const void * needle, const void * hay)){
-	while(ll){
-		if(cmp(item, ll->item) == 0){
-			return ll;
+	if(cb){
+		for(i = 0; i < va->length; i++){
+			cb(va->data[i], ctx);
 		}
-		
-		ll = ll->next;
 	}
 	
-	return NULL;
+	free(va->data);
+	free(va);
 }
 
-LLEXPORT void linklist_forEach(linklist_s * ll, 
-		void (*callback)(void * item, void * ctx), void * ctx){
-	while(ll){
-		callback(ll->item, ctx);
-		ll = ll->next;
+static inline varray_s * varray_grow(varray_s * va){
+	if(va->size > va->length){
+		return va;
 	}
+	
+	va->size = va->size * 2 + 1;
+	va->data = safeRealloc(va->data, va->size * sizeof *va->data);
+	
+	return va;
 }
 
-LLEXPORT linklist_s * linklist_remove(linklist_s * ll, const void * item, 
-		int (*cmp)(const void * a, const void * b), void ** ret){
-	linklist_s * next;
-	if(!ll){
+VAPRIVATE varray_s * varray_add(varray_s * va, void * item){
+	varray_grow(va);
+	
+	va->data[va->length++] = item;
+	
+	return va;
+}
+
+VAPRIVATE void * varray_insert(varray_s * va, void * item,
+		int (*cmp)(const void * a, const void * b)){
+	size_t i;
+	void * ret = NULL;
+	
+	for(i = 0; i < va->length; i++){
+		if(!cmp(item, va->data[i])){
+			ret = va->data[i];
+			va->data[i] = item;
+		}
+	}
+	
+	if(!ret){
+		varray_add(va, item);
+	}
+	
+	return ret;
+}
+
+VAPRIVATE size_t varray_findIdx(varray_s * va, const void * item, 
+		int (*cmp)(const void * a, const void * b)){
+	size_t i;
+	
+	for(i = 0; i < va->length; i++){
+		if(!cmp(item, va->data[i])){
+			return i;
+		}
+	}
+	
+	return va->size;
+}
+
+VAPRIVATE void * varray_find(varray_s * va, const void * item, 
+		int (*cmp)(const void * a, const void * b)){
+	size_t idx = varray_findIdx(va, item, cmp);
+	
+	if(idx == va->size){
 		return NULL;
 	}
 	
-	if(cmp(item, ll->item) == 0){
-		if(ret){
-			*ret = ll->item;
-		}
-		
-		next = ll->next;
-		free(ll);
-		return next;
-	}
-	
-	ll->next = linklist_remove(ll->next, item, cmp, ret);
-	return ll;
+	return va->data[idx];
 }
 
-LLEXPORT void linklist_free(linklist_s * ll, void (*cb)(void * item, void * ctx),
-		void * ctx){
-	if(ll){
-		linklist_free(ll->next, cb, ctx);
-		if(cb){
-			cb(ll->item, ctx);
-		}
-		free(ll);
-	}
-}
-
-LLEXPORT linklist_s * linklist_copy(const linklist_s * src, void * (cpy)(const
-		void * item, void * ctx), void * ctx){
-	linklist_s * ret = safeMalloc(sizeof *ret);
+VAPRIVATE void * varray_remove(varray_s * va, const void * item, 
+		int (*cmp)(const void * a, const void * b)){
+	size_t idx = varray_findIdx(va, item, cmp);
+	void * ret = NULL;
 	
-	if(src->next){
-		ret->next = linklist_copy(src->next, cpy, ctx);
-	}else{
-		ret->next = NULL;
+	if(idx == va->size){
+		return NULL;
 	}
 	
-	if(cpy){
-		ret->item = cpy(src->item, ctx);
-	}else{
-		ret->item = src->item;
+	ret = va->data[idx];
+	va->length--;
+	if(idx < va->length){ // move last item into idx
+		va->data[idx] = va->data[va->length];
 	}
+	va->data[va->length] = NULL;
 	
 	return ret;
 }
 
-/* Print a linklist, using callback to print each item itself. */
-LLEXPORT void linklist_print(linklist_s * ll, void (*callback)(const void * item)){
-	while(ll){
-		callback(ll->item);
-		
-		if(ll->next){
-			printf(" -> ");
-		}
-		
-		ll = ll->next;
+VAPRIVATE void varray_forEach(varray_s * va, void (*cb)(void * item, void * ctx),
+		void * ctx){
+	size_t i;
+	for(i = 0; i < va->length; i++){
+		cb(va->data[i], ctx);
+	}
+}
+
+VAPRIVATE void varray_print(varray_s * va, void (*cb)(const void * item)){
+	size_t i;
+	
+	if(!va->length){
+		return;
+	}
+	
+	cb(va->data[0]);
+	
+	for(i = 1; i < va->length; i++){
+		printf(", ");
+		cb(va->data[i]);
 	}
 }
 
@@ -188,57 +236,29 @@ size_t hashtab_length(hashtab_s * ht){
 	return ht->length + (ht->other ? hashtab_length(ht->other) : 0);
 }
 
-/**
- * @private
- *
- * Adds the provided link to the hash table. The next pointer in ll will be
- * overwritten, regardless of its original content. Updates ht->first as well.
- *
- * @param ht The hash table.
- * @param ll The link.
- * @return The hash of the item added.
- */
-static size_t hashtab_addLink(hashtab_s * ht, linklist_s * link){
-	size_t hash = ht->hasher(link->item) % ht->size;
+static hashtab_s * hashtab_addItem(hashtab_s * ht, void * item){
+	size_t hash = ht->hasher(item) % ht->size;
 	
-	link->next = NULL;
-	if(ht->data[hash] != NULL){
-		link->next = ht->data[hash];
+	if(!ht->data[hash]){
+		ht->data[hash] = varray_make(1);
 	}
+	varray_add(ht->data[hash], item);
 	
-	ht->data[hash] = link;
 	++ht->length;
 	
 	if(ht->first > hash){
 		ht->first = hash;
 	}
 	
-	return hash;
+	return ht;
 }
 
-/**
- * @private
- *
- * Adds all the links in the linklist to the hash table.
- *
- * @param ht The hash table.
- * @param link The linklist.
- * @return The number of items added.
- */
-static size_t hashtab_linkAdd(hashtab_s * ht, linklist_s * ll){
-	size_t ret = 0;
-	linklist_s * next;
-	
-	while(ll){
-		next = ll->next;
-		
-		hashtab_addLink(ht, ll);
-		
-		ll = next;
-		++ret;
+static size_t hashtab_addVarray(hashtab_s * ht, varray_s * va){
+	size_t i;
+	for(i = 0; i < varray_length(va); i++){
+		hashtab_addItem(ht, varray_data(va)[i]);
 	}
-	
-	return ret;
+	return varray_length(va);
 }
 
 /**
@@ -266,12 +286,13 @@ static size_t hashtab_findFirst(hashtab_s * ht, size_t i){
  */
 static void hashtab_moveOver(hashtab_s * ht){
 	size_t i, moved;
-	linklist_s * link;
+	varray_s * va;
 	
 	for(i = 0; i < ht->size / ht->moveR && ht->length > 0; ++i){
-		link = ht->data[ht->first];
+		va = ht->data[ht->first];
 		ht->data[ht->first] = NULL;
-		moved = hashtab_linkAdd(ht->other, link);
+		moved = hashtab_addVarray(ht->other, va);
+		varray_free(va, NULL, NULL);
 		ht->length -= moved;
 	
 		hashtab_findFirst(ht, ht->first);
@@ -290,38 +311,24 @@ static void hashtab_moveOver(hashtab_s * ht){
 	}
 }
 
-/**
- * @private 
- *
- * Re-hashes and moves all the links in the given linklist with the new size to
- * the new data store.
- *
- * @param ll The linklist.
- * @param ht The hash table.
- * @param newData The new data store (bucket list).
- * @param newSize The size of the new data store.
- * @return The smallest non-empty index.
- */
-static size_t hashtab_rehashLink(linklist_s * ll, hashtab_s * ht, 
-		linklist_s ** newData, size_t newSize){
-	size_t hash, first = newSize;
-	linklist_s * next;
+static size_t hashtab_rehashVarray(varray_s * va, hashtab_s * ht,
+		varray_s ** newData, size_t newSize){
+	size_t i, first = newSize, hash;
+	void * item;
 	
-	while(ll){
-		next = ll->next;
-		ll->next = NULL;
+	for(i = 0; i < varray_length(va); i++){
+		item = varray_data(va)[i];
+		hash = ht->hasher(item) % newSize;
 		
-		hash = ht->hasher(ll->item) % newSize;
-		if(newData[hash] != NULL){
-			ll->next = newData[hash];
+		if(!newData[hash]){
+			newData[hash] = varray_make(1);
 		}
-		newData[hash] = ll;
+		
+		varray_add(newData[hash], item);
 		
 		if(hash < first){
 			first = hash;
 		}
-		
-		ll = next;
 	}
 	
 	return first;
@@ -331,7 +338,7 @@ static size_t hashtab_rehashLink(linklist_s * ll, hashtab_s * ht,
  * @private
  *
  * Re-hashes the entire table after either growing or shrinking. This re-hashing
- * is done inline, so some items may be re-hashed (at most) twice. Also safeReallocs
+ * is done inline, so some items may be re-hashed (at most) twice. Also reallocs
  * the data store of the table either before or after.
  *
  * @param ht The hash table.
@@ -339,7 +346,7 @@ static size_t hashtab_rehashLink(linklist_s * ll, hashtab_s * ht,
  */
 static void hashtab_rehash(hashtab_s * ht, size_t newSize){
 	size_t i, tfirst, first = newSize;
-	linklist_s * tdata;
+	varray_s * tdata;
 	
 	if(newSize > ht->size){ /* growth */
 		ht->data = safeRealloc(ht->data, newSize * sizeof *ht->data);
@@ -355,7 +362,7 @@ static void hashtab_rehash(hashtab_s * ht, size_t newSize){
 		
 		tdata = ht->data[i];
 		ht->data[i] = NULL;
-		tfirst = hashtab_rehashLink(tdata, ht, ht->data, newSize);
+		tfirst = hashtab_rehashVarray(tdata, ht, ht->data, newSize);
 		if(tfirst < first){
 			first = tfirst;
 		}
@@ -387,27 +394,6 @@ static void hashtab_grow(hashtab_s * ht){
 	}
 	
 	++ht->grows;
-}
-
-/**
- * @private
- *
- * Finds the link containing item.
- *
- * @param ht The hash table.
- * @param item The item to find.
- * @return The link containing the item, or NULL if it's not in the table.
- */
-static linklist_s * hashtab_findLink(hashtab_s * ht, const void * item){
-	size_t hash = ht->hasher(item) % ht->size;
-	
-	linklist_s * datum = linklist_find(ht->data[hash], item, ht->cmp);
-	
-	if(datum == NULL && ht->other){
-		return hashtab_findLink(ht->other, item);
-	}
-	
-	return datum;
 }
 
 hashtab_s * hashtab_make(size_t size, 
@@ -449,25 +435,29 @@ size_t hashtab_add(hashtab_s * ht, void * item){
 		
 		hashtab_moveOver(ht);
 	}else{
-		hashtab_addLink(ht, linklist_make(item, NULL));
+		hashtab_addItem(ht, item);
 	}
 	
 	return ht->length;
 }
 
 void * hashtab_find(hashtab_s * ht, const void * item){
-	linklist_s * link = hashtab_findLink(ht, item);
+	size_t hash = ht->hasher(item) % ht->size;
 	
-	return link ? link->item : NULL;
+	if(!ht->data[hash]){
+		return NULL;
+	}
+	
+	return varray_find(ht->data[hash], item, ht->cmp);
 }
 
 void * hashtab_insert(hashtab_s * ht, void * item){
-	linklist_s * link = hashtab_findLink(ht, item);
+	size_t hash = ht->hasher(item) % ht->size;
+	varray_s * va = ht->data[hash];
 	void * ret = NULL;
 	
-	if(link){
-		ret = link->item;
-		link->item = item;
+	if(va){
+		ret = varray_insert(va, item, ht->cmp);
 	}else{
 		hashtab_add(ht, item);
 	}
@@ -475,18 +465,18 @@ void * hashtab_insert(hashtab_s * ht, void * item){
 	return ret;
 }
 
-void hashtab_forEach(hashtab_s * ht, 
-		void (*callback)(void * item, void * ctx), void * ctx){
+void hashtab_forEach(hashtab_s * ht, void (*cb)(void * item, void * ctx),
+		void * ctx){
 	size_t i;
 	
 	for(i = 0; i < ht->size; ++i){
-		if(ht->data[i]){ /* not strictly necessary, but avoids useless calls */
-			linklist_forEach(ht->data[i], callback, ctx);
+		if(ht->data[i]){
+			varray_forEach(ht->data[i], cb, ctx);
 		}
 	}
 	
 	if(ht->other){
-		hashtab_forEach(ht->other, callback, ctx);
+		hashtab_forEach(ht->other, cb, ctx);
 	}
 }
 
@@ -494,7 +484,10 @@ void * hashtab_remove(hashtab_s * ht, const void * item){
 	void * ret = NULL;
 	size_t hash = ht->hasher(item) % ht->size;
 	
-	ht->data[hash] = linklist_remove(ht->data[hash], item, ht->cmp, &ret);
+	if(ht->data[hash]){
+		ret = varray_remove(ht->data[hash], item, ht->cmp);
+	}
+	
 	if(ht->other){
 		if(ret == NULL){
 			ret = hashtab_remove(ht->other, item);
@@ -532,7 +525,7 @@ hashtab_s * hashtab_copy(const hashtab_s * src, void * (cpy)(const void
 	
 	for(i = 0; i < ret->size; i++){
 		if(src->data[i]){
-			ret->data[i] = linklist_copy(src->data[i], cpy, ctx);
+			ret->data[i] = varray_copy(src->data[i], cpy, ctx);
 		}else{
 			ret->data[i] = NULL;
 		}
@@ -554,7 +547,9 @@ void hashtab_free(hashtab_s * ht, void (*cb)(void * item, void * ctx),
 	}
 	
 	for(i = 0; i < ht->size; ++i){
-		linklist_free(ht->data[i], cb, ctx);
+		if(ht->data[i]){
+			varray_free(ht->data[i], cb, ctx);
+		}
 	}
 	
 	free(ht->data);
@@ -587,7 +582,9 @@ void hashtab_print(hashtab_s * ht, void (*callback)(const void * item)){
 	
 	for(i = 0; i < ht->size; ++i){
 		printf("	%u: ", i);
-		linklist_print(ht->data[i], callback);
+		if(ht->data[i]){
+			varray_print(ht->data[i], callback);
+		}
 		putchar('\n');
 	}
 	
