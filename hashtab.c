@@ -189,7 +189,7 @@ size_t hashtab_length(hashtab_s * ht){
 }
 
 /**
- * @static
+ * @private
  *
  * Adds the provided link to the hash table. The next pointer in ll will be
  * overwritten, regardless of its original content. Updates ht->first as well.
@@ -217,7 +217,7 @@ static size_t hashtab_addLink(hashtab_s * ht, linklist_s * link){
 }
 
 /**
- * @static
+ * @private
  *
  * Adds all the links in the linklist to the hash table.
  *
@@ -242,7 +242,7 @@ static size_t hashtab_linkAdd(hashtab_s * ht, linklist_s * ll){
 }
 
 /**
- * @static
+ * @private
  *
  * Finds the first non-empty (non-NULL) slot (bucket) in the hash table.
  *
@@ -258,7 +258,7 @@ static size_t hashtab_findFirst(hashtab_s * ht, size_t i){
 }
 
 /**
- * @static
+ * @private
  * 
  * Migrates exisiting items to the other table. Called when growing.
  *
@@ -291,7 +291,7 @@ static void hashtab_moveOver(hashtab_s * ht){
 }
 
 /**
- * @static 
+ * @private 
  *
  * Re-hashes and moves all the links in the given linklist with the new size to
  * the new data store.
@@ -328,7 +328,7 @@ static size_t hashtab_rehashLink(linklist_s * ll, hashtab_s * ht,
 }
 
 /**
- * @static
+ * @private
  *
  * Re-hashes the entire table after either growing or shrinking. This re-hashing
  * is done inline, so some items may be re-hashed (at most) twice. Also safeReallocs
@@ -370,7 +370,7 @@ static void hashtab_rehash(hashtab_s * ht, size_t newSize){
 }
 
 /**
- * @static
+ * @private
  *
  * Grows the table by either re-hashing (see above) or allocating a new table
  * for incremental resizing. Growing always happens by doubling the size.
@@ -390,7 +390,7 @@ static void hashtab_grow(hashtab_s * ht){
 }
 
 /**
- * @static
+ * @private
  *
  * Finds the link containing item.
  *
