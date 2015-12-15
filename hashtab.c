@@ -45,12 +45,18 @@
 
 typedef hashtab__varray_s varray_s;
 
+static size_t mallocs = 0;
+static size_t reallocs = 0;
+
 static void * safeMalloc(size_t n){
 	void * p = malloc(n);
 	if(!p){
 		fprintf(stderr, "malloc(%u) failed\n", n);
 		exit(1);
 	}
+	
+	++mallocs;
+	
 	return p;
 }
 
@@ -60,6 +66,9 @@ static void * safeRealloc(void * p, size_t n){
 		fprintf(stderr, "realloc(%p, %u) failed\n", p, n);
 		exit(1);
 	}
+	
+	++reallocs;
+	
 	return np;
 }
 
@@ -591,4 +600,8 @@ void hashtab_print(hashtab_s * ht, void (*callback)(const void * item)){
 	if(ht->other){
 		hashtab_print(ht->other, callback);
 	}
+}
+
+void printMemStats(){
+	fprintf(stderr, "mallocs: %u, reallocs: %u\n", mallocs, reallocs);
 }
