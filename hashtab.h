@@ -334,4 +334,6 @@ void hashtab_printHead(hashtab_s * ht, int other);
  */
 void hashtab_print(hashtab_s * ht, void (*callback)(const void * item));
 
+void printMemStats();
+
 #endif

@@ -120,5 +120,7 @@ int main(void){
 	/* Clean up values with the free callback and the hash table itself */
 	hashtab_free(ht, KVfree, NULL);
 	
+	printMemStats();
+	
 	return 0;
 }
